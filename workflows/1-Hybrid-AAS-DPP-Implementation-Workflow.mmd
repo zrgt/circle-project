@@ -1,0 +1,68 @@
+graph TD
+    Start((Start)) --> IdentifyAssets["Identify Assets (Types and Instances) to be represented with DPP"]
+
+    %% --- INFRASTRUCTURE PATH (The New Way) ---
+    SetupInfra[Setup and deploy AAS Infrastructure]
+    SetupInfra --> AASServer
+
+    %% --- IDENTIFICATION & MAPPING ---
+    IdentifyAssets --> CheckID
+
+    CheckID{Assets have<br/>DPP conform unique IDs?}
+    CheckID -- Yes --> MapID["Use existing ID as:<br/>1. AAS Identifier Base<br/>2. Asset Id"]
+    CheckID -- No --> GenID["Generate IDs<br/>(e.g., 'urn:company:type:serial')"]
+
+    GenID --> MapID
+    MapID --> CreateAAS[Generate Empty AAS Shells]
+    CreateAAS --> StaticGen
+
+
+    IdentifyAssets --> DefineReqData[Define Required Data for your DPP]
+
+    subgraph IdentifySub[Identify Required Submodels to fulfill DPP]
+        CheckStandard{Standard Submodel Template exists?}
+        Info[Mögliche Submodels:<br/>- Digital Nameplate<br/>- Contact Information<br/>- Handover Documentation<br/>- Carbon Footprint]
+        CheckStandard -- Yes --> UseStandard[Use Standard Submodel Template]
+        CheckStandard -- No --> ModelNew[Model Custom Submodel Template]
+    end
+
+    DefineReqData --> IdentifySub
+
+
+    %% --- DATA SOURCE ANALYSIS ---
+    UseStandard -- Add to --> SMCollection[Submodel Template Collection]
+    ModelNew -- Add to --> SMCollection
+    SMCollection --> DataAnalysis[Analyze Data Sources for each Submodel]
+
+    DataAnalysis --> DataType{Data Type?}
+
+    %% Path A: Static Data
+    DataType -- Static --> StaticGen[Static Generation Path]
+
+    subgraph StaticTools [Static Tools & Manual entry]
+        Excel[Excel-to-AAS Generator Scripts]
+        Manual[Manual Data Entry:
+        - JSON/XML Editors
+        - AASX Package Explorer
+        - AAS Manager]
+        ToolB[PDF-2-HandoverDocs Generator Tool]
+    end
+
+    StaticGen --> StaticTools
+
+    %% Path B: Dynamic Data
+    DataType -- Dynamic --> DynamicGen[Dynamic Integration Path]
+
+    subgraph SyncProcess [Automated Synchronization]
+        Scripts[Custom Integration Scripts e.g. based on Basyx-Python-SDK]
+        NodeRed[AAS Node-RED Flows]
+    end
+
+    DynamicGen --> SyncProcess
+
+    %% --- INTEGRATION & FINAL ---
+    StaticTools -- Add created AAS/SM to --> AASServer[Central AAS Server e.g. BaSyx Server]
+    SyncProcess -- Create/update SM in --> AASServer
+
+    AASServer --> Mapping["Mapping to DPP Standard (when DPP-Standard is public)"]
+    Mapping --> DPP[Digital Product Passport]
