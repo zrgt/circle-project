@@ -19,10 +19,6 @@ graph LR
     Start --> DefineReqData
     Start --> DataAnalysis
 
-    %% Central Server (Outside of subgraphs)
-    AASServer[[Central AAS Server]]
-    class AASServer server;
-
     %% --- 1. INFRASTRUCTURE ---
     subgraph Infrastructure [1. AAS Ecosystem Setup]
         direction LR
@@ -36,7 +32,6 @@ graph LR
         SetupInfra --> Security
     end
 
-    Infrastructure --> AASServer
 
     %% --- 2. IDENTIFICATION ---
     subgraph Identification [2. Asset Identification]
@@ -53,9 +48,6 @@ graph LR
         CheckID -- Yes --> MapID
         MapID --> CreateAAS
     end
-
-    CreateAAS --> AASServer
-
 
 
     %% --- 3. MODELING ---
@@ -111,9 +103,6 @@ graph LR
         DynamicGen --> Sync
     end
 
-    Tools --> AASServer
-    Sync --> AASServer
-
     %% --- 5. OUTPUT ---
     subgraph Output [5. DPP Delivery]
         direction LR
@@ -125,6 +114,13 @@ graph LR
         Mapping --> DPP
     end
 
+    %% Central Server (Outside of subgraphs)
+    AASServer[[Central AAS Server]]
+    class AASServer server;
+    Infrastructure --> AASServer
+    CreateAAS --> AASServer
+    Tools --> AASServer
+    Sync --> AASServer
     AASServer --AAS--> Validation
 
     %% Assigning Classes
