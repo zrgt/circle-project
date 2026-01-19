@@ -1,68 +1,135 @@
-graph TD
-    Start((Start)) --> IdentifyAssets["Identify Assets (Types and Instances) to be represented with DPP"]
+graph LR
+    %% Global Styles
+    classDef infra fill:#e1f5fe,stroke:#01579b,stroke-width:2px,color:#01579b;
+    classDef asset fill:#fff3e0,stroke:#e65100,stroke-width:2px,color:#e65100;
+    classDef modeling fill:#f3e5f5,stroke:#4a148c,stroke-width:2px,color:#4a148c;
+    classDef data fill:#e8f5e9,stroke:#1b5e20,stroke-width:2px,color:#1b5e20;
+    classDef final fill:#ffebee,stroke:#b71c1c,stroke-width:2px,color:#b71c1c;
+    classDef server fill:#333,stroke:#000,stroke-width:3px,color:#fff,font-weight:bold;
 
-    %% --- INFRASTRUCTURE PATH (The New Way) ---
-    SetupInfra[Setup and deploy AAS Infrastructure]
-    SetupInfra --> AASServer
+    %% Unvisible Links for Layout
+    Infrastructure ~~~ Identification
+    Identification ~~~ Modeling
+    Modeling ~~~ Integration
 
-    %% --- IDENTIFICATION & MAPPING ---
-    IdentifyAssets --> CheckID
+    %% Workflow Start
+    Start((Start))
+    Start --> SetupInfra
+    Start --> IdentifyAssets
+    Start --> DefineReqData
+    Start --> DataAnalysis
 
-    CheckID{Assets have<br/>DPP conform unique IDs?}
-    CheckID -- Yes --> MapID["Use existing ID as:<br/>1. AAS Identifier Base<br/>2. Asset Id"]
-    CheckID -- No --> GenID["Generate IDs<br/>(e.g., 'urn:company:type:serial')"]
+    %% Central Server (Outside of subgraphs)
+    AASServer[[Central AAS Server]]
+    class AASServer server;
 
-    GenID --> MapID
-    MapID --> CreateAAS[Generate Empty AAS Shells]
-    CreateAAS --> StaticGen
+    %% --- 1. INFRASTRUCTURE ---
+    subgraph Infrastructure [1. AAS Ecosystem Setup]
+        direction LR
+        SetupInfra[Setup & Deploy <br/> AAS Infrastructure]
+        AASRepository[AAS Repository Server <br/> e.g. BaSyx Server / FA3ST]
+        Registry[AAS Registry Service <br/> for Discovery]
+        Security[Security Layer]
 
-
-    IdentifyAssets --> DefineReqData[Define Required Data for your DPP]
-
-    subgraph IdentifySub[Identify Required Submodels to fulfill DPP]
-        CheckStandard{Standard Submodel Template exists?}
-        Info[Mögliche Submodels:<br/>- Digital Nameplate<br/>- Contact Information<br/>- Handover Documentation<br/>- Carbon Footprint]
-        CheckStandard -- Yes --> UseStandard[Use Standard Submodel Template]
-        CheckStandard -- No --> ModelNew[Model Custom Submodel Template]
+        SetupInfra --> AASRepository
+        SetupInfra --> Registry
+        SetupInfra --> Security
     end
 
-    DefineReqData --> IdentifySub
+    Infrastructure --> AASServer
 
+    %% --- 2. IDENTIFICATION ---
+    subgraph Identification [2. Asset Identification]
+        direction LR
+        IdentifyAssets["Identify Assets <br/> (Types & Instances) for DPP"]
+        CheckID{Assets have <br/> Unique IDs <br/> conform to DPP?}
+        MapID["Build AAS Identifier <br/> based on Asset IDs"]
+        GenID["Generate IDs <br/> (URN/UUID)"]
+        CreateAAS[Initialize Empty <br/> AAS Shells]
 
-    %% --- DATA SOURCE ANALYSIS ---
-    UseStandard -- Add to --> SMCollection[Submodel Template Collection]
-    ModelNew -- Add to --> SMCollection
-    SMCollection --> DataAnalysis[Analyze Data Sources for each Submodel]
-
-    DataAnalysis --> DataType{Data Type?}
-
-    %% Path A: Static Data
-    DataType -- Static --> StaticGen[Static Generation Path]
-
-    subgraph StaticTools [Static Tools & Manual entry]
-        Excel[Excel-to-AAS Generator Scripts]
-        Manual[Manual Data Entry:
-        - JSON/XML Editors
-        - AASX Package Explorer
-        - AAS Manager]
-        ToolB[PDF-2-HandoverDocs Generator Tool]
+        IdentifyAssets --> CheckID
+        CheckID -- No --> GenID
+        GenID --> MapID
+        CheckID -- Yes --> MapID
+        MapID --> CreateAAS
     end
 
-    StaticGen --> StaticTools
+    CreateAAS --> AASServer
 
-    %% Path B: Dynamic Data
-    DataType -- Dynamic --> DynamicGen[Dynamic Integration Path]
 
-    subgraph SyncProcess [Automated Synchronization]
-        Scripts[Custom Integration Scripts e.g. based on Basyx-Python-SDK]
-        NodeRed[AAS Node-RED Flows]
+
+    %% --- 3. MODELING ---
+    IdentifyAssets --> DefineReqData
+    subgraph Modeling [3. Semantic Modeling]
+        direction LR
+        Info[Proposed Submodels:<br/>- Digital Nameplate<br/>- Contact Information<br/>- Handover Documentation<br/>- Carbon Footprint]
+        DefineReqData[Define DPP Data <br/> Requirements]
+        IdentifySub[Identify Submodel <br/> Templates]
+
+        CheckStandard{Standard Template<br/> exists?}
+        UseStandard[Use Standard SM]
+        ModelNew[Model Custom SM]
+        SMCollection[Submodel Template <br/> Collection for DPP]
+
+        DefineReqData --> IdentifySub
+        IdentifySub --> CheckStandard
+        CheckStandard -- Yes --> UseStandard
+        CheckStandard -- No --> ModelNew
+        UseStandard --> SMCollection
+        ModelNew --> SMCollection
     end
 
-    DynamicGen --> SyncProcess
+    %% --- 4. INTEGRATION ---
+    IdentifyAssets --> DataAnalysis
+    SMCollection --> DataAnalysis
+    subgraph Integration [4. Data Integration]
+        direction LR
+        DataAnalysis[Analyze Sources <br/> & Protocols]
+        DataType{Data Type?}
 
-    %% --- INTEGRATION & FINAL ---
-    StaticTools -- Add created AAS/SM to --> AASServer[Central AAS Server e.g. BaSyx Server]
-    SyncProcess -- Create/update SM in --> AASServer
+        StaticGen[Static Path]
+        DynamicGen[Dynamic Path]
 
-    AASServer --> Mapping["Mapping to DPP Standard (when DPP-Standard is public)"]
-    Mapping --> DPP[Digital Product Passport]
+        subgraph Tools [Static Tools]
+            Excel[Excel-to-AAS Scripts]
+            Manual[AAS Manager / <br/>AASX Package Explorer / <br/> Manual Entry]
+            VDI2770Tool[PDF-to-Handover Tool]
+            OtherStaticTool[...]
+        end
+
+        subgraph Sync [Dynamic Sync]
+            Scripts[Python-SDK Scripts]
+            NodeRed[Node-RED / MQTT / OPC UA]
+            Connectors[ERP/MES Connectors]
+            OtherSyncTool[...]
+        end
+
+        DataAnalysis --> DataType
+        DataType -- "Batch/Fixed" --> StaticGen
+        DataType -- "Live" --> DynamicGen
+        StaticGen --> Tools
+        DynamicGen --> Sync
+    end
+
+    Tools --> AASServer
+    Sync --> AASServer
+
+    %% --- 5. OUTPUT ---
+    subgraph Output [5. DPP Delivery]
+        direction LR
+        Validation[Validation & Compliance Check <br/> if DPP Ready]
+        Mapping["DPP Mapping <br/> (API Exposure)"]
+        DPP[Digital Product Passport]
+
+        Validation --> Mapping
+        Mapping --> DPP
+    end
+
+    AASServer --AAS--> Validation
+
+    %% Assigning Classes
+    class SetupInfra,AASRepository,Registry,Security infra;
+    class IdentifyAssets,CheckID,MapID,GenID,CreateAAS asset;
+    class DefineReqData,IdentifySub,CheckStandard,UseStandard,ModelNew,SMCollection modeling;
+    class DataAnalysis,DataType,StaticGen,DynamicGen,Tools,Sync,Excel,Manual,Scripts,VDI2770Tool,Connectors,OtherStaticTool,OtherSyncTool,NodeRed data;
+    class Validation,Mapping,DPP final;
